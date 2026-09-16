@@ -114,7 +114,7 @@ export default function FinancialAnalysisPage() {
               Financial Analysis & Cashflow
             </h1>
             <p className="mt-1 text-sm sm:text-base text-zinc-400">
-              Live intelligence on Money Received, Money Sent, and Current M-Pesa Balance.
+              Live Analysis on Money Received, Money Sent, and Current M-Pesa Balance.
             </p>
           </div>
 

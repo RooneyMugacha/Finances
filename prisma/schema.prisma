@@ -32,3 +32,21 @@ model Session {
   @@index([userId])
   @@map("sessions")
 }
+
+// Stores M-Pesa SMS transactions forwarded from the Android SMS Forwarder app
+model SmsTransaction {
+  id           String   @id                  // Transaction ID parsed from SMS (e.g. QGH8912355)
+  from         String                        // Raw sender (e.g. "MPESA")
+  sender       String                        // Parsed payee/payer name
+  message      String                        // Full raw SMS text
+  amount       Float    @default(0)          // Transaction amount in KES
+  type         String                        // "send" | "receive" | "balance"
+  category     String                        // e.g. "Groceries", "Income / Transfer"
+  balanceAfter Float    @default(0)          // M-Pesa balance after transaction
+  dateStr      String                        // Human-readable date string
+  receivedAt   DateTime @default(now())      // When webhook received this SMS
+
+  @@index([type])
+  @@index([receivedAt])
+  @@map("sms_transactions")
+}

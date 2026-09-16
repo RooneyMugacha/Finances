@@ -34,7 +34,7 @@ export default function Topbar() {
             className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 transition"
           >
             <LineChart size={14} className="text-emerald-400" />
-            Live Analysis Demo
+            Live Analysis
           </Link>
           <Link href="/auth/login" className="text-sm font-medium text-zinc-300 hover:text-white transition">
             Log in
