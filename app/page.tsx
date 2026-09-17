@@ -1,7 +1,7 @@
 // app/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '@/app/components/Topbar';
 import Footer from '@/app/components/Footer';
@@ -84,6 +84,43 @@ const painPoints = [
 
 function HeroDashboardPreview() {
   const [activeTab, setActiveTab] = useState<'overview' | 'received' | 'sent'>('overview');
+  const [liveData, setLiveData] = useState<{
+    balance: number;
+    received: number;
+    sent: number;
+    netCashflow: number;
+    recentTx: any[];
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/webhook/sms')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.transactions && Array.isArray(data.transactions)) {
+          const txs: any[] = data.transactions;
+          let received = 0, sent = 0;
+          txs.forEach((tx) => {
+            if (tx.type === 'receive') received += tx.amount;
+            else if (tx.type === 'send') sent += tx.amount;
+          });
+          const balance = txs.length > 0 ? txs[0].balanceAfter : 0;
+          setLiveData({
+            balance,
+            received,
+            sent,
+            netCashflow: received - sent,
+            recentTx: txs.slice(0, 2),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const balance   = liveData ? `KES ${fmt(liveData.balance)}`   : 'KES —';
+  const received  = liveData ? `+KES ${fmt(liveData.received)}` : '+KES —';
+  const sent      = liveData ? `-KES ${fmt(liveData.sent)}`     : '-KES —';
+  const net       = liveData ? liveData.netCashflow : 0;
 
   return (
     <div className="relative w-full max-w-lg mx-auto lg:max-w-none">
@@ -121,7 +158,7 @@ function HeroDashboardPreview() {
               activeTab === 'received' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            Received (+20.5K)
+            {liveData ? `Received (${fmt(liveData.received)})` : 'Received'}
           </button>
           <button
             onClick={() => setActiveTab('sent')}
@@ -129,7 +166,7 @@ function HeroDashboardPreview() {
               activeTab === 'sent' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            Sent (-17.0K)
+            {liveData ? `Sent (${fmt(liveData.sent)})` : 'Sent'}
           </button>
         </div>
 
@@ -140,63 +177,62 @@ function HeroDashboardPreview() {
             {/* Current Balance */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'overview' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Current Balance</p>
-              <p className="mt-1 text-sm sm:text-base font-extrabold text-white tabular-nums">KES 19,750</p>
+              <p className="mt-1 text-sm sm:text-base font-extrabold text-white tabular-nums">{balance}</p>
             </div>
 
             {/* Money Received */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'received' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Money Received</p>
-              <p className="mt-1 text-sm sm:text-base font-extrabold text-emerald-400 tabular-nums">+KES 20,500</p>
+              <p className="mt-1 text-sm sm:text-base font-extrabold text-emerald-400 tabular-nums">{received}</p>
             </div>
 
             {/* Money Sent */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'sent' ? 'border-rose-500/40 bg-rose-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">Money Sent</p>
-              <p className="mt-1 text-sm sm:text-base font-extrabold text-rose-400 tabular-nums">-KES 17,000</p>
+              <p className="mt-1 text-sm sm:text-base font-extrabold text-rose-400 tabular-nums">{sent}</p>
             </div>
           </div>
 
-          {/* Sample Transaction Feed Preview */}
+          {/* Live Transaction Feed */}
           <div className="rounded-xl border border-white/5 bg-zinc-950/70 p-3 space-y-2.5">
             <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400 pb-1 border-b border-white/5">
               <span>Recent Webhook Transactions</span>
               <span className="text-emerald-400">Auto-parsed</span>
             </div>
 
-            {/* Item 1: Money Received */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <div className="grid h-6 w-6 place-items-center rounded bg-emerald-500/20 text-emerald-400">
-                  <ArrowDownLeft size={14} />
+            {liveData && liveData.recentTx.length > 0 ? (
+              liveData.recentTx.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={`grid h-6 w-6 place-items-center rounded ${
+                      tx.type === 'receive' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                    }`}>
+                      {tx.type === 'receive' ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white truncate max-w-[120px]">{tx.sender}</p>
+                      <p className="text-[10px] text-zinc-400">{tx.id} · {tx.dateStr}</p>
+                    </div>
+                  </div>
+                  <span className={`font-bold ${ tx.type === 'receive' ? 'text-emerald-400' : 'text-rose-400' }`}>
+                    {tx.type === 'receive' ? '+' : '-'}KES {tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <div>
-                  <p className="font-semibold text-white">ALICE WAMBUI</p>
-                  <p className="text-[10px] text-zinc-400">QGH8912355 · Today 9:40 PM</p>
-                </div>
-              </div>
-              <span className="font-bold text-emerald-400">+KES 3,500.00</span>
-            </div>
-
-            {/* Item 2: Money Sent */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <div className="grid h-6 w-6 place-items-center rounded bg-rose-500/20 text-rose-400">
-                  <ArrowUpRight size={14} />
-                </div>
-                <div>
-                  <p className="font-semibold text-white">TOTAL PETROL STATION</p>
-                  <p className="text-[10px] text-zinc-400">QGH8912354 · Today 9:05 PM</p>
-                </div>
-              </div>
-              <span className="font-bold text-rose-400">-KES 1,100.00</span>
-            </div>
+              ))
+            ) : (
+              <p className="text-[11px] text-zinc-500 py-2 text-center italic">
+                {liveData ? 'No transactions yet — send an MPESA SMS!' : 'Connecting to live feed...'}
+              </p>
+            )}
           </div>
 
-          {/* Alert pill */}
+          {/* Net cashflow alert pill */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Sparkles size={14} className="text-amber-400 flex-shrink-0" />
-              Net positive cashflow of +KES 3,500 this period.
+              {liveData
+                ? `Net ${net >= 0 ? 'positive' : 'negative'} cashflow of ${net >= 0 ? '+' : ''}KES ${fmt(net)} this period.`
+                : 'Loading live cashflow data...'}
             </span>
             <Link href="/analysis" className="font-bold underline text-amber-200 hover:text-white">
               Analyze →
@@ -402,7 +438,7 @@ export default function PerfectLandingPage() {
                 </p>
                 <div className="mt-6 space-y-2 text-xs font-mono bg-zinc-950 p-4 rounded-xl border border-white/10 text-emerald-300">
                   <p className="text-zinc-500">// Your active webhook endpoint:</p>
-                  <p className="font-bold text-white">https://cuddle-perfume-dimness.ngrok-free.dev/api/webhook/sms</p>
+                  <p className="font-bold text-white">https://finances-98up.vercel.app/api/webhook/sms</p>
                 </div>
               </div>
 
