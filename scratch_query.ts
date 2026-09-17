@@ -13,7 +13,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log(`Connecting to database at: ${connectionString.split('@')[1]}`);
+  console.log(`Connecting to database at: ${connectionString!.split('@')[1]}`);
   
   const users = await prisma.user.findMany();
   console.log("\n--- Users ---");
