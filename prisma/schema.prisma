@@ -14,12 +14,13 @@ model User {
   email        String           @unique
   passwordHash String
   name         String
-  webhookToken String?          @unique @default(cuid())
+  webhookToken String?          @default(cuid())
   role         String           @default("user")
   createdAt    DateTime         @default(now())
   sessions     Session[]
   transactions SmsTransaction[]
 
+  @@index([webhookToken])
   @@map("users")
 }
 
