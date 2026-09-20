@@ -421,39 +421,6 @@ export default function PerfectLandingPage() {
           </div>
         </section>
 
-        {/* WEBHOOK TECHNICAL SPOTLIGHT */}
-        <section className="py-16 border-y border-white/10 bg-zinc-900/60">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-zinc-900 via-zinc-900 to-emerald-950/40 p-8 sm:p-12 grid gap-8 lg:grid-cols-2 lg:items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30 mb-4">
-                  <Server size={14} />
-                  <span>Developer & Forwarder Ready</span>
-                </div>
-                <h2 className="text-3xl font-extrabold text-white">
-                  Ngrok & SMS Webhook Integration
-                </h2>
-                <p className="mt-4 text-zinc-300 text-sm sm:text-base leading-relaxed">
-                  MfukoLens comes equipped with a high-performance SMS Webhook listener (`/api/webhook/sms`). Simply forward your device SMS notifications through ngrok or your preferred SMS forwarder app.
-                </p>
-                <div className="mt-6 space-y-2 text-xs font-mono bg-zinc-950 p-4 rounded-xl border border-white/10 text-emerald-300">
-                  <p className="text-zinc-500">// Your active webhook endpoint:</p>
-                  <p className="font-bold text-white">https://finances-98up.vercel.app/api/webhook/sms</p>
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <Link
-                  href="/analysis"
-                  className="inline-flex items-center gap-3 rounded-2xl bg-emerald-500 px-8 py-4 text-lg font-black text-zinc-950 hover:bg-emerald-400 transition shadow-2xl shadow-emerald-500/30"
-                >
-                  <LineChart size={24} />
-                  Test Live Analysis Page
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* PRIVACY GUARANTEE */}
         <section id="privacy" className="py-16">
