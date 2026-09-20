@@ -5,54 +5,29 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '@/app/components/Topbar';
 import Footer from '@/app/components/Footer';
-import {
-  ArrowRight,
-  ArrowUpRight,
-  ArrowDownLeft,
-  BellRing,
-  FileUp,
-  PieChart,
-  ShieldCheck,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  Zap,
-  LineChart,
-  CheckCircle2,
-  Lock,
-  Sparkles,
-  Smartphone,
-  Server
-} from 'lucide-react';
 
 const features = [
   {
-    icon: Wallet,
     title: 'Real-time Balance Tracking',
     description: 'Always know your exact M-Pesa balance updated after every incoming or outgoing SMS.',
   },
   {
-    icon: ArrowDownLeft,
     title: 'Money Received (Inflow)',
     description: 'Instantly track who sends you money — salary, clients, peer transfers — with automated sender categorization.',
   },
   {
-    icon: ArrowUpRight,
     title: 'Money Sent (Outflow)',
     description: 'Know where every shilling goes: rent, paybills, buy goods, airtime, utilities, and peer transfers.',
   },
   {
-    icon: Zap,
     title: 'Automated Webhook Sync',
-    description: 'Connect your SMS forwarder or ngrok webhook endpoint to process M-Pesa notifications hands-free.',
+    description: 'Connect your personal SMS forwarder endpoint to process M-Pesa notifications hands-free.',
   },
   {
-    icon: PieChart,
     title: 'Wastage & Leak Radar',
     description: 'Identify hidden leaks like small daily KES 200 transactions eating up your monthly savings.',
   },
   {
-    icon: FileUp,
     title: 'M-Pesa Statement Import',
     description: 'Import your official Safaricom PDF/CSV statements. Automatic duplicate detection built-in.',
   },
@@ -62,7 +37,7 @@ const steps = [
   {
     step: '01',
     title: 'Connect SMS Webhook',
-    description: 'Set your webhook URL (e.g. ngrok) or forward SMS messages directly to MfukoLens.',
+    description: 'Copy your unique assigned webhook URL and paste it into your SMS Forwarder app.',
   },
   {
     step: '02',
@@ -124,21 +99,12 @@ function HeroDashboardPreview() {
 
   return (
     <div className="relative w-full max-w-lg mx-auto lg:max-w-none">
-      {/* Background glowing emerald blur */}
-      <div className="absolute -inset-4 rounded-3xl bg-emerald-500/20 blur-3xl opacity-70 animate-pulse" />
-
       <div className="relative rounded-2xl border border-white/10 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur-xl">
         {/* Top Header inside preview */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500 text-zinc-950">
-              <Wallet size={16} />
-            </span>
-            <span className="font-bold text-sm text-white">MfukoLens Live Overview</span>
-          </div>
-          <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            Live Webhook
+          <span className="font-bold text-sm text-white">MfukoLens Live Overview</span>
+          <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+            Live Sync
           </span>
         </div>
 
@@ -174,19 +140,16 @@ function HeroDashboardPreview() {
         <div className="mt-5 space-y-4">
           {/* Main 3 Metrics Row */}
           <div className="grid grid-cols-3 gap-2.5">
-            {/* Current Balance */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'overview' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Current Balance</p>
               <p className="mt-1 text-sm sm:text-base font-extrabold text-white tabular-nums">{balance}</p>
             </div>
 
-            {/* Money Received */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'received' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Money Received</p>
               <p className="mt-1 text-sm sm:text-base font-extrabold text-emerald-400 tabular-nums">{received}</p>
             </div>
 
-            {/* Money Sent */}
             <div className={`rounded-xl border p-3 transition ${activeTab === 'sent' ? 'border-rose-500/40 bg-rose-500/10' : 'border-white/5 bg-zinc-950/60'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-400">Money Sent</p>
               <p className="mt-1 text-sm sm:text-base font-extrabold text-rose-400 tabular-nums">{sent}</p>
@@ -203,16 +166,9 @@ function HeroDashboardPreview() {
             {liveData && liveData.recentTx.length > 0 ? (
               liveData.recentTx.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className={`grid h-6 w-6 place-items-center rounded ${
-                      tx.type === 'receive' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-                    }`}>
-                      {tx.type === 'receive' ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white truncate max-w-[120px]">{tx.sender}</p>
-                      <p className="text-[10px] text-zinc-400">{tx.id} · {tx.dateStr}</p>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-white truncate max-w-[140px]">{tx.sender}</p>
+                    <p className="text-[10px] text-zinc-400">{tx.id} · {tx.dateStr}</p>
                   </div>
                   <span className={`font-bold ${ tx.type === 'receive' ? 'text-emerald-400' : 'text-rose-400' }`}>
                     {tx.type === 'receive' ? '+' : '-'}KES {tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -221,15 +177,14 @@ function HeroDashboardPreview() {
               ))
             ) : (
               <p className="text-[11px] text-zinc-500 py-2 text-center italic">
-                {liveData ? 'No transactions yet — send an MPESA SMS!' : 'Connecting to live feed...'}
+                {liveData ? 'No transactions yet' : 'Connecting to live feed...'}
               </p>
             )}
           </div>
 
           {/* Net cashflow alert pill */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Sparkles size={14} className="text-amber-400 flex-shrink-0" />
+            <span>
               {liveData
                 ? `Net ${net >= 0 ? 'positive' : 'negative'} cashflow of ${net >= 0 ? '+' : ''}KES ${fmt(net)} this period.`
                 : 'Loading live cashflow data...'}
@@ -256,7 +211,6 @@ export default function PerfectLandingPage() {
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-400 mb-6">
-                  <Zap size={14} />
                   <span>SMS Webhook Integration Live</span>
                 </div>
 
@@ -271,43 +225,31 @@ export default function PerfectLandingPage() {
                 <div className="mt-8 flex flex-wrap items-center gap-4">
                   <Link
                     href="/analysis"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-extrabold text-zinc-950 hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20"
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-extrabold text-zinc-950 hover:bg-emerald-400 transition"
                   >
-                    <LineChart size={20} />
-                    View Financial Analysis Demo
+                    View Financial Analysis Dashboard
                   </Link>
                   <Link
                     href="/auth/signup"
                     className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-zinc-900 px-6 py-3.5 text-base font-bold text-white hover:bg-zinc-800 transition"
                   >
                     Get Started Free
-                    <ArrowRight size={18} />
                   </Link>
                 </div>
 
                 <div className="mt-8 flex items-center gap-6 text-xs text-zinc-500">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-400" />
-                    No M-Pesa PIN required
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-400" />
-                    Instant Webhook Parsing
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-400" />
-                    100% Private
-                  </span>
+                  <span>• No M-Pesa PIN required</span>
+                  <span>• Instant Webhook Parsing</span>
+                  <span>• 100% Private</span>
                 </div>
               </div>
 
-              {/* Live Dashboard Interactive Preview Widget */}
               <HeroDashboardPreview />
             </div>
           </div>
         </section>
 
-        {/* CORE METRICS SPOTLIGHT SECTION (Money Received, Money Sent, Balance) */}
+        {/* CORE METRICS SPOTLIGHT SECTION */}
         <section className="border-y border-white/10 bg-zinc-900/50 py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-12">
@@ -320,46 +262,25 @@ export default function PerfectLandingPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
-              {/* Metric 1 */}
-              <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 relative overflow-hidden group hover:border-emerald-500/40 transition">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 grid place-items-center mb-4 border border-emerald-500/20">
-                  <ArrowDownLeft size={24} />
-                </div>
+              <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 relative overflow-hidden">
                 <h3 className="text-lg font-bold text-white">Money Received</h3>
                 <p className="mt-2 text-xs sm:text-sm text-zinc-400 leading-relaxed">
                   Automatically group and sum up all incoming payments, peer transfers, salary, and business revenue. See your top senders ranked.
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 text-emerald-400 font-extrabold text-sm">
-                  +KES 20,500.00 logged this period
-                </div>
               </div>
 
-              {/* Metric 2 */}
-              <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 relative overflow-hidden group hover:border-rose-500/40 transition">
-                <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 grid place-items-center mb-4 border border-rose-500/20">
-                  <ArrowUpRight size={24} />
-                </div>
+              <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 relative overflow-hidden">
                 <h3 className="text-lg font-bold text-white">Money Sent</h3>
                 <p className="mt-2 text-xs sm:text-sm text-zinc-400 leading-relaxed">
                   Track every outgoing shilling: Paybill payments, Till numbers, utilities, rent, and money sent to family or friends.
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/5 text-rose-400 font-extrabold text-sm">
-                  -KES 17,000.00 logged this period
-                </div>
               </div>
 
-              {/* Metric 3 */}
-              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-zinc-900 to-emerald-950/30 p-6 relative overflow-hidden group hover:border-emerald-500/60 transition">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 grid place-items-center mb-4 border border-emerald-500/30">
-                  <Wallet size={24} />
-                </div>
+              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-b from-zinc-900 to-emerald-950/30 p-6 relative overflow-hidden">
                 <h3 className="text-lg font-bold text-white">Current M-Pesa Balance</h3>
                 <p className="mt-2 text-xs sm:text-sm text-zinc-400 leading-relaxed">
                   Real-time running balance synced directly from official transaction SMS messages. Get alerts before your runway runs dry.
                 </p>
-                <div className="mt-4 pt-3 border-t border-white/10 text-white font-extrabold text-sm">
-                  KES 19,750.00 live running balance
-                </div>
               </div>
             </div>
           </div>
@@ -389,9 +310,8 @@ export default function PerfectLandingPage() {
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((f) => (
-                <div key={f.title} className="rounded-2xl border border-white/10 bg-zinc-900 p-6 hover:border-emerald-500/30 transition">
-                  <f.icon className="text-emerald-400" size={24} />
-                  <h3 className="mt-4 font-bold text-lg text-white">{f.title}</h3>
+                <div key={f.title} className="rounded-2xl border border-white/10 bg-zinc-900 p-6">
+                  <h3 className="font-bold text-lg text-white">{f.title}</h3>
                   <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{f.description}</p>
                 </div>
               ))}
@@ -421,31 +341,21 @@ export default function PerfectLandingPage() {
           </div>
         </section>
 
-
         {/* PRIVACY GUARANTEE */}
-        <section id="privacy" className="py-16">
+        <section id="privacy" className="py-16 border-t border-white/10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-8 md:grid-cols-2 items-center">
               <div>
-                <ShieldCheck className="text-emerald-400" size={32} />
-                <h2 className="mt-4 text-3xl font-extrabold text-white">Your Money Data Remains 100% Private</h2>
+                <h2 className="text-3xl font-extrabold text-white">Your Money Data Remains 100% Private</h2>
                 <p className="mt-3 text-zinc-400 text-sm leading-relaxed">
                   We built MfukoLens with privacy first. Your data is encrypted and accessible only to you.
                 </p>
               </div>
               <ul className="space-y-3 text-sm text-zinc-300">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-emerald-400" /> We NEVER ask for your M-Pesa PIN or Safaricom password.
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-emerald-400" /> Only you can view your transactions & analysis.
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-emerald-400" /> Export or delete your data at any time with one click.
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-emerald-400" /> No ads, no selling data to third parties.
-                </li>
+                <li>• We NEVER ask for your M-Pesa PIN or Safaricom password.</li>
+                <li>• Only you can view your transactions & analysis.</li>
+                <li>• Export or delete your data at any time with one click.</li>
+                <li>• No ads, no selling data to third parties.</li>
               </ul>
             </div>
           </div>
@@ -464,7 +374,7 @@ export default function PerfectLandingPage() {
                   href="/analysis"
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-extrabold text-zinc-950 hover:bg-emerald-400 transition"
                 >
-                  Open Financial Analysis Dashboard <ArrowRight size={18} />
+                  Open Financial Analysis Dashboard →
                 </Link>
               </div>
             </div>

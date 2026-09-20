@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifySession } from '@/lib/session';
 
 // ─── M-Pesa SMS Parser ────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ function extractDeepField(obj: any, candidateKeys: string[]): string | null {
   return null;
 }
 
-// ─── POST — Receive a forwarded SMS ──────────────────────────────────────────
+// ─── POST — Receive a forwarded SMS linked to a User Token ───────────────────
 
 export async function POST(req: NextRequest) {
   try {
@@ -163,9 +164,35 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log('\n📩 [SMS Webhook] Incoming Payload');
-    console.log('Content-Type:', contentType);
-    console.log('Payload:', JSON.stringify(payload, null, 2));
+    // Identify user by token parameter in URL or payload header
+    const token =
+      req.nextUrl.searchParams.get('token') ||
+      payload.token ||
+      payload.webhookToken ||
+      req.headers.get('x-webhook-token');
+
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized: Missing webhook token. Provide your token in the URL: /api/webhook/sms?token=YOUR_TOKEN',
+        },
+        { status: 401 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { webhookToken: token },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Invalid webhook token.' },
+        { status: 401 }
+      );
+    }
+
+    console.log(`\n📩 [SMS Webhook] Incoming Payload for User: ${user.email} (${user.id})`);
 
     // Extract sender & message across all known SMS forwarder formats
     const sender =
@@ -180,11 +207,9 @@ export async function POST(req: NextRequest) {
         'body', 'payload', 'sms_body', 'text_body', 'rawBody',
       ]) || (typeof payload === 'string' ? payload : JSON.stringify(payload));
 
-    console.log(`Sender : ${sender}`);
-    console.log(`Message: ${message}`);
-
-    // Get the most recent balance for delta calculation fallback
+    // Get user's most recent balance for delta calculation fallback
     const latest = await prisma.smsTransaction.findFirst({
+      where: { userId: user.id },
       orderBy: { receivedAt: 'desc' },
       select: { balanceAfter: true },
     });
@@ -193,11 +218,11 @@ export async function POST(req: NextRequest) {
     // Parse into structured transaction object
     const parsed = parseSmsMessage(message, sender, latestBalance);
 
-    // Upsert — prevents duplicate transaction IDs
+    // Upsert — prevents duplicate transaction IDs and binds to user
     const saved = await prisma.smsTransaction.upsert({
       where: { id: parsed.id },
       update: {
-        // Re-apply latest parser rules on re-receive (e.g. category corrections)
+        userId: user.id,
         type: parsed.type,
         amount: parsed.amount,
         balanceAfter: parsed.balanceAfter,
@@ -208,6 +233,7 @@ export async function POST(req: NextRequest) {
       },
       create: {
         id: parsed.id,
+        userId: user.id,
         from: parsed.from,
         sender: parsed.sender,
         message: parsed.message,
@@ -219,9 +245,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const totalCount = await prisma.smsTransaction.count();
+    const totalCount = await prisma.smsTransaction.count({
+      where: { userId: user.id },
+    });
 
-    console.log(`✅ Stored: ${saved.id} | type=${saved.type} | amount=${saved.amount}`);
+    console.log(`✅ Stored for ${user.email}: ${saved.id} | type=${saved.type} | amount=${saved.amount}`);
 
     return NextResponse.json(
       {
@@ -241,18 +269,55 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── GET — List all stored transactions ──────────────────────────────────────
+// ─── GET — List user's transactions ──────────────────────────────────────────
 
 export async function GET() {
   try {
+    const session = await verifySession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Please log in to view transactions.' },
+        { status: 401 }
+      );
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, email: true, name: true, webhookToken: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User account not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!user.webhookToken) {
+      const crypto = require('crypto');
+      const newToken = 'usr_' + crypto.randomBytes(12).toString('hex');
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { webhookToken: newToken },
+        select: { id: true, email: true, name: true, webhookToken: true },
+      });
+    }
+
     const transactions = await prisma.smsTransaction.findMany({
+      where: { userId: user.id },
       orderBy: { receivedAt: 'desc' },
     });
 
     return NextResponse.json(
       {
+        success: true,
         status: 'online',
-        service: 'SMS Webhook Listener',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          webhookToken: user.webhookToken,
+        },
         totalCount: transactions.length,
         transactions,
         timestamp: new Date().toISOString(),

@@ -10,13 +10,15 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String           @id @default(cuid())
+  email        String           @unique
   passwordHash String
   name         String
-  role         String    @default("user")
-  createdAt    DateTime  @default(now())
+  webhookToken String?          @unique @default(cuid())
+  role         String           @default("user")
+  createdAt    DateTime         @default(now())
   sessions     Session[]
+  transactions SmsTransaction[]
 
   @@map("users")
 }
@@ -36,6 +38,8 @@ model Session {
 // Stores M-Pesa SMS transactions forwarded from the Android SMS Forwarder app
 model SmsTransaction {
   id           String   @id                  // Transaction ID parsed from SMS (e.g. QGH8912355)
+  userId       String?                       // ID of the user who owns this transaction (optional for legacy rows)
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   from         String                        // Raw sender (e.g. "MPESA")
   sender       String                        // Parsed payee/payer name
   message      String                        // Full raw SMS text
@@ -46,6 +50,7 @@ model SmsTransaction {
   dateStr      String                        // Human-readable date string
   receivedAt   DateTime @default(now())      // When webhook received this SMS
 
+  @@index([userId])
   @@index([type])
   @@index([receivedAt])
   @@map("sms_transactions")

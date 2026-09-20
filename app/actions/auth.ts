@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { createSession, deleteSession } from '@/lib/session';
 import {
@@ -47,12 +48,14 @@ export async function signupAction(
   // 3. Hash password
   const passwordHash = await bcrypt.hash(password, 12);
 
-  // 4. Create user
+  // 4. Create user with unique webhookToken
+  const webhookToken = 'usr_' + crypto.randomBytes(12).toString('hex');
   const user = await prisma.user.create({
     data: {
       name,
       email,
       passwordHash,
+      webhookToken,
     },
   });
 
@@ -89,7 +92,7 @@ export async function loginAction(
 
   const { email, password } = parsed.data;
 
-  // 2. Look up user — don't reveal which field was wrong
+  // 2. Look up user
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -109,10 +112,19 @@ export async function loginAction(
     };
   }
 
+  // Ensure user has a webhookToken
+  if (!user.webhookToken) {
+    const webhookToken = 'usr_' + crypto.randomBytes(12).toString('hex');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { webhookToken },
+    });
+  }
+
   // 4. Create session + cookie
   await createSession(user.id);
 
-  // 5. Redirect (throws — never returns)
+  // 5. Redirect
   redirect('/dashboard');
 }
 

@@ -4,31 +4,39 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Topbar from '@/app/components/Topbar';
 import Footer from '@/app/components/Footer';
-import {
-  Wallet,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Search,
-  AlertCircle,
-  RefreshCw,
-  Sparkles,
-  Bot,
-  Calendar,
-  Zap,
-  CheckCircle2
-} from 'lucide-react';
 
 export default function FinancialAnalysisPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [userData, setUserData] = useState<{ name: string; email: string; webhookToken: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'receive' | 'send'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   // AI Analysis state
   const [aiPeriod, setAiPeriod] = useState<'day' | 'week'>('week');
   const [aiData, setAiData] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch('/api/webhook/sms');
+      const data = await res.json();
+      if (data.user) {
+        setUserData(data.user);
+      }
+      if (data.transactions && Array.isArray(data.transactions)) {
+        setTransactions(data.transactions);
+      }
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   const fetchAiAnalysis = useCallback(async (period: 'day' | 'week') => {
     try {
@@ -46,32 +54,9 @@ export default function FinancialAnalysisPage() {
   }, []);
 
   useEffect(() => {
-    fetchAiAnalysis(aiPeriod);
-  }, [aiPeriod, fetchAiAnalysis]);
-
-  // Fetch transactions from backend
-  const fetchTransactions = useCallback(async () => {
-    try {
-      setIsRefreshing(true);
-      const res = await fetch('/api/webhook/sms');
-      const data = await res.json();
-      if (data.transactions && Array.isArray(data.transactions)) {
-        setTransactions(data.transactions);
-      }
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
-
-  // Poll for incoming SMS messages
-  useEffect(() => {
     fetchTransactions();
-    const interval = setInterval(fetchTransactions, 3000);
-    return () => clearInterval(interval);
-  }, [fetchTransactions]);
+    fetchAiAnalysis(aiPeriod);
+  }, [fetchTransactions, fetchAiAnalysis, aiPeriod]);
 
   // Compute key financial metrics dynamically from live transactions
   const metrics = useMemo(() => {
@@ -131,6 +116,18 @@ export default function FinancialAnalysisPage() {
     });
   }, [transactions, activeTab, searchQuery]);
 
+  const personalWebhookUrl = userData?.webhookToken
+    ? `https://finances-98up.vercel.app/api/webhook/sms?token=${userData.webhookToken}`
+    : null;
+
+  const handleCopyWebhook = () => {
+    if (personalWebhookUrl) {
+      navigator.clipboard.writeText(personalWebhookUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2500);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 antialiased flex flex-col font-sans">
       <Topbar />
@@ -154,28 +151,44 @@ export default function FinancialAnalysisPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900 px-3.5 py-2.5 text-xs font-bold text-zinc-300 hover:bg-zinc-800 transition"
               title="Refresh transactions"
             >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-emerald-400' : ''} />
-              Sync Feed
+              {isRefreshing ? 'Syncing...' : 'Sync Feed'}
             </button>
           </div>
         </div>
 
-        {/* PRIMARY FINANCIAL KPI CARDS (Current Balance, Money Received, Money Sent) */}
+        {/* PERSONAL WEBHOOK URL BANNER */}
+        {personalWebhookUrl && (
+          <div className="rounded-2xl border border-emerald-500/40 bg-zinc-900/90 p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Your Personal SMS Webhook Endpoint</span>
+              <p className="text-xs text-zinc-300">
+                Paste this unique URL into your SMS Forwarder app on your phone. SMS received at this address will be securely assigned to your account.
+              </p>
+              <p className="text-xs font-mono font-bold text-white bg-zinc-950 px-3 py-2 rounded-lg border border-white/10 overflow-x-auto select-all">
+                {personalWebhookUrl}
+              </p>
+            </div>
+
+            <button
+              onClick={handleCopyWebhook}
+              className="px-5 py-2.5 text-xs font-bold rounded-xl bg-emerald-500 text-zinc-950 hover:bg-emerald-400 transition flex-shrink-0"
+            >
+              {copiedUrl ? 'Copied to Clipboard!' : 'Copy Webhook URL'}
+            </button>
+          </div>
+        )}
+
+        {/* PRIMARY FINANCIAL KPI CARDS */}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {/* Card 1: Current M-Pesa Balance */}
           <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-emerald-950/40 p-6 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                  Current M-Pesa Balance
-                </p>
-                <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-white tabular-nums">
-                  KES {metrics.currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </h2>
-              </div>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <Wallet size={24} />
-              </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                Current M-Pesa Balance
+              </p>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-white tabular-nums">
+                KES {metrics.currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </h2>
             </div>
 
             <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-xs">
@@ -184,26 +197,17 @@ export default function FinancialAnalysisPage() {
                 {metrics.netCashflow >= 0 ? '+' : ''}KES {metrics.netCashflow.toLocaleString('en-US')}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-400">
-              <AlertCircle size={14} />
-              <span>≈ 14 days estimated budget runway remaining</span>
-            </div>
           </div>
 
           {/* Card 2: Money Received */}
           <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl transition hover:border-emerald-500/40">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Total Money Received
-                </p>
-                <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-emerald-400 tabular-nums">
-                  +KES {metrics.moneyReceived.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </h2>
-              </div>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <ArrowDownLeft size={24} />
-              </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Total Money Received
+              </p>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-emerald-400 tabular-nums">
+                +KES {metrics.moneyReceived.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </h2>
             </div>
 
             <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-xs">
@@ -220,18 +224,13 @@ export default function FinancialAnalysisPage() {
 
           {/* Card 3: Money Sent */}
           <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl transition hover:border-rose-500/40 sm:col-span-2 lg:col-span-1">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Total Money Sent
-                </p>
-                <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-rose-400 tabular-nums">
-                  -KES {metrics.moneySent.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </h2>
-              </div>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                <ArrowUpRight size={24} />
-              </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Total Money Sent
+              </p>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-rose-400 tabular-nums">
+                -KES {metrics.moneySent.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </h2>
             </div>
 
             <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-xs">
@@ -250,20 +249,14 @@ export default function FinancialAnalysisPage() {
         {/* AI FINANCIAL ADVISOR SECTION */}
         <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/40 p-6 sm:p-8 shadow-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
-                <Bot size={22} />
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black text-white">AI Financial Coach</h2>
+                <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+                  {aiData?.source === 'gemini-ai' ? 'Gemini 2.0 AI' : 'Smart Analytics'}
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black text-white">AI Financial Coach</h2>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
-                    <Sparkles size={12} />
-                    {aiData?.source === 'gemini-ai' ? 'Gemini 2.0 AI' : 'Smart Analytics'}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400">Automated spending pattern detection & money leaks analysis</p>
-              </div>
+              <p className="text-xs text-zinc-400">Automated spending pattern detection & money leaks analysis</p>
             </div>
 
             {/* Timeframe Switcher */}
@@ -271,20 +264,18 @@ export default function FinancialAnalysisPage() {
               <div className="flex rounded-xl bg-zinc-950 p-1 border border-white/10 text-xs font-semibold">
                 <button
                   onClick={() => setAiPeriod('day')}
-                  className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg transition ${
                     aiPeriod === 'day' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <Calendar size={13} />
                   Daily (24h)
                 </button>
                 <button
                   onClick={() => setAiPeriod('week')}
-                  className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg transition ${
                     aiPeriod === 'week' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <Calendar size={13} />
                   Weekly (7 Days)
                 </button>
               </div>
@@ -292,10 +283,9 @@ export default function FinancialAnalysisPage() {
               <button
                 onClick={() => fetchAiAnalysis(aiPeriod)}
                 disabled={aiLoading}
-                className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-zinc-950 text-zinc-300 hover:text-white transition"
-                title="Re-run AI Analysis"
+                className="px-3 py-1.5 text-xs font-bold rounded-xl border border-white/10 bg-zinc-950 text-zinc-300 hover:text-white transition"
               >
-                <RefreshCw size={14} className={aiLoading ? 'animate-spin text-emerald-400' : ''} />
+                {aiLoading ? 'Analyzing...' : 'Refresh AI'}
               </button>
             </div>
           </div>
@@ -303,30 +293,25 @@ export default function FinancialAnalysisPage() {
           {/* AI Content Display */}
           <div className="mt-6 space-y-5">
             {aiLoading ? (
-              <div className="py-8 text-center text-sm text-zinc-400 flex items-center justify-center gap-2">
-                <RefreshCw size={18} className="animate-spin text-emerald-400" />
-                <span>Analyzing your {aiPeriod === 'day' ? 'daily' : 'weekly'} M-Pesa transactions...</span>
+              <div className="py-8 text-center text-sm text-zinc-400">
+                Analyzing your {aiPeriod === 'day' ? 'daily' : 'weekly'} M-Pesa transactions...
               </div>
             ) : aiData?.aiAnalysis ? (
               <>
                 {/* Headline Banner */}
-                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200 text-sm font-bold flex items-start gap-3">
-                  <Zap size={20} className="text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-xs uppercase tracking-wider text-emerald-400 font-semibold block mb-0.5">
-                      {aiPeriod === 'day' ? 'Daily Key Takeaway' : 'Weekly Key Takeaway'}
-                    </span>
-                    {aiData.aiAnalysis.headline}
-                  </div>
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200 text-sm font-bold">
+                  <span className="text-xs uppercase tracking-wider text-emerald-400 font-semibold block mb-0.5">
+                    {aiPeriod === 'day' ? 'Daily Key Takeaway' : 'Weekly Key Takeaway'}
+                  </span>
+                  {aiData.aiAnalysis.headline}
                 </div>
 
                 {/* Highlights List */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   {aiData.aiAnalysis.highlights?.map((highlight: string, idx: number) => (
                     <div key={idx} className="rounded-xl border border-white/10 bg-zinc-950/70 p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
-                        <CheckCircle2 size={14} />
-                        <span>Insight #{idx + 1}</span>
+                      <div className="text-xs font-semibold text-emerald-400">
+                        Insight #{idx + 1}
                       </div>
                       <p className="text-xs text-zinc-200 leading-relaxed">{highlight}</p>
                     </div>
@@ -342,7 +327,7 @@ export default function FinancialAnalysisPage() {
                 )}
               </>
             ) : (
-              <p className="text-xs text-zinc-500 text-center py-4">Unable to load AI analysis. Try refreshing.</p>
+              <p className="text-xs text-zinc-500 text-center py-4">Unable to load AI analysis. Try logging in or refreshing.</p>
             )}
           </div>
         </div>
@@ -383,17 +368,6 @@ export default function FinancialAnalysisPage() {
                 ))
               )}
             </div>
-
-            {/* Quick Financial Insight Banner */}
-            <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-300 flex items-start gap-3">
-              <AlertCircle size={18} className="text-amber-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-amber-200">Financial Insight:</p>
-                <p className="mt-0.5 text-amber-300/90 leading-relaxed">
-                  Net cashflow is <strong className="text-white">{metrics.netCashflow >= 0 ? '+' : ''}KES {metrics.netCashflow.toLocaleString()}</strong>.
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Cashflow Highlights */}
@@ -403,8 +377,7 @@ export default function FinancialAnalysisPage() {
 
               {/* Highest Money Received */}
               <div className="rounded-xl bg-zinc-950 border border-emerald-500/20 p-4 mb-4">
-                <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold mb-1">
-                  <ArrowDownLeft size={14} />
+                <div className="text-xs text-emerald-400 font-semibold mb-1">
                   Top Inflow Source
                 </div>
                 <p className="font-bold text-white text-base">{metrics.topSender.name}</p>
@@ -415,8 +388,7 @@ export default function FinancialAnalysisPage() {
 
               {/* Highest Money Sent */}
               <div className="rounded-xl bg-zinc-950 border border-rose-500/20 p-4">
-                <div className="flex items-center gap-2 text-xs text-rose-400 font-semibold mb-1">
-                  <ArrowUpRight size={14} />
+                <div className="text-xs text-rose-400 font-semibold mb-1">
                   Top Outflow Destination
                 </div>
                 <p className="font-bold text-white text-base">{metrics.topPayee.name}</p>
@@ -432,17 +404,14 @@ export default function FinancialAnalysisPage() {
         <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-xl text-white">Parsed Transactions</h3>
-              </div>
+              <h3 className="font-bold text-xl text-white">Your Transactions</h3>
               <p className="text-xs text-zinc-400 mt-0.5">
-                SMS messages forwarded to your webhook are automatically parsed and displayed below.
+                SMS messages received at your unique webhook URL are parsed and displayed below.
               </p>
             </div>
 
             {/* Filter Tabs & Search */}
             <div className="flex flex-wrap items-center gap-3">
-              {/* Tab Pills */}
               <div className="flex items-center rounded-xl bg-zinc-950 p-1 border border-white/10 text-xs font-semibold">
                 <button
                   onClick={() => setActiveTab('all')}
@@ -470,25 +439,20 @@ export default function FinancialAnalysisPage() {
                 </button>
               </div>
 
-              {/* Search Box */}
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search sender, code, merchant..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="rounded-xl bg-zinc-950 border border-white/10 pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none w-48 sm:w-60"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Search sender, code, merchant..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-xl bg-zinc-950 border border-white/10 px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none w-48 sm:w-60"
+              />
             </div>
           </div>
 
           {/* Transactions Table/List */}
           <div className="divide-y divide-white/5 border-t border-white/10">
             {loading ? (
-              <div className="py-12 text-center text-sm text-zinc-400 flex items-center justify-center gap-2">
-                <RefreshCw size={16} className="animate-spin text-emerald-400" />
+              <div className="py-12 text-center text-sm text-zinc-400">
                 Loading transactions...
               </div>
             ) : filteredTransactions.length === 0 ? (
@@ -499,25 +463,6 @@ export default function FinancialAnalysisPage() {
               filteredTransactions.map((tx) => (
                 <div key={tx.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-800/40 px-2 rounded-xl transition">
                   <div className="flex items-start gap-3.5">
-                    {/* Icon indicator */}
-                    <div
-                      className={`grid h-10 w-10 place-items-center rounded-xl flex-shrink-0 mt-0.5 ${
-                        tx.type === 'receive'
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : tx.type === 'balance'
-                          ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
-                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                      }`}
-                    >
-                      {tx.type === 'receive' ? (
-                        <ArrowDownLeft size={20} />
-                      ) : tx.type === 'balance' ? (
-                        <Wallet size={20} />
-                      ) : (
-                        <ArrowUpRight size={20} />
-                      )}
-                    </div>
-
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white text-sm sm:text-base">{tx.sender}</span>
@@ -546,7 +491,7 @@ export default function FinancialAnalysisPage() {
                           : 'text-rose-400'
                       }`}
                     >
-                      {tx.type === 'receive' ? '+' : tx.type === 'balance' ? 'ℹ Bal: ' : '-'}KES {(tx.type === 'balance' ? tx.balanceAfter : tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {tx.type === 'receive' ? '+' : tx.type === 'balance' ? 'Bal: ' : '-'}KES {(tx.type === 'balance' ? tx.balanceAfter : tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                     <span className="text-xs text-zinc-400 font-mono">
                       Bal: KES {tx.balanceAfter.toLocaleString('en-US', { minimumFractionDigits: 2 })}

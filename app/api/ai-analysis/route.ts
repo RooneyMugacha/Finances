@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifySession } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await verifySession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Please log in.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const period = searchParams.get('period') === 'day' ? 'day' : 'week';
 
-    const now = new Date();
     const startDate = new Date();
     if (period === 'day') {
       startDate.setHours(startDate.getHours() - 24);
@@ -14,9 +22,10 @@ export async function GET(req: NextRequest) {
       startDate.setDate(startDate.getDate() - 7);
     }
 
-    // Fetch transactions within timeframe
+    // Fetch user's transactions within timeframe
     let transactions = await prisma.smsTransaction.findMany({
       where: {
+        userId: session.userId,
         receivedAt: {
           gte: startDate,
         },
@@ -24,9 +33,10 @@ export async function GET(req: NextRequest) {
       orderBy: { receivedAt: 'desc' },
     });
 
-    // If no transactions in recent period, fallback to all transactions to ensure user gets insights
+    // Fallback to recent user transactions if none found in exact period
     if (transactions.length === 0) {
       transactions = await prisma.smsTransaction.findMany({
+        where: { userId: session.userId },
         take: 50,
         orderBy: { receivedAt: 'desc' },
       });
@@ -51,7 +61,6 @@ export async function GET(req: NextRequest) {
 
     const netCashflow = totalReceived - totalSent;
 
-    // Generate response data
     const statsData = {
       period,
       totalReceived,

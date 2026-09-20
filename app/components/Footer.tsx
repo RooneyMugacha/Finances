@@ -8,12 +8,6 @@ export default function Footer() {
         {/* brand blurb */}
         <div className="footer-brand">
           <Link href="/" className="brand" style={{ fontSize: 18 }}>
-            <span className="brand-logo" style={{ width: 34, height: 34 }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M2 10h20" />
-              </svg>
-            </span>
             MfukoLens
           </Link>
           <p>Know where every shilling goes. Built for M-Pesa users in Kenya.</p>
