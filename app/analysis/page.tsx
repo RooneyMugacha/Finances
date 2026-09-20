@@ -10,7 +10,12 @@ import {
   ArrowDownLeft,
   Search,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Bot,
+  Calendar,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function FinancialAnalysisPage() {
@@ -19,6 +24,30 @@ export default function FinancialAnalysisPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'receive' | 'send'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // AI Analysis state
+  const [aiPeriod, setAiPeriod] = useState<'day' | 'week'>('week');
+  const [aiData, setAiData] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const fetchAiAnalysis = useCallback(async (period: 'day' | 'week') => {
+    try {
+      setAiLoading(true);
+      const res = await fetch(`/api/ai-analysis?period=${period}`);
+      const data = await res.json();
+      if (data.success) {
+        setAiData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching AI analysis:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAiAnalysis(aiPeriod);
+  }, [aiPeriod, fetchAiAnalysis]);
 
   // Fetch transactions from backend
   const fetchTransactions = useCallback(async () => {
@@ -215,6 +244,106 @@ export default function FinancialAnalysisPage() {
                 {metrics.topPayee.name} (KES {metrics.topPayee.amount.toLocaleString()})
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* AI FINANCIAL ADVISOR SECTION */}
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/40 p-6 sm:p-8 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
+                <Bot size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-white">AI Financial Coach</h2>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+                    <Sparkles size={12} />
+                    {aiData?.source === 'gemini-ai' ? 'Gemini 2.0 AI' : 'Smart Analytics'}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400">Automated spending pattern detection & money leaks analysis</p>
+              </div>
+            </div>
+
+            {/* Timeframe Switcher */}
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl bg-zinc-950 p-1 border border-white/10 text-xs font-semibold">
+                <button
+                  onClick={() => setAiPeriod('day')}
+                  className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                    aiPeriod === 'day' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Calendar size={13} />
+                  Daily (24h)
+                </button>
+                <button
+                  onClick={() => setAiPeriod('week')}
+                  className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                    aiPeriod === 'week' ? 'bg-emerald-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Calendar size={13} />
+                  Weekly (7 Days)
+                </button>
+              </div>
+
+              <button
+                onClick={() => fetchAiAnalysis(aiPeriod)}
+                disabled={aiLoading}
+                className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-zinc-950 text-zinc-300 hover:text-white transition"
+                title="Re-run AI Analysis"
+              >
+                <RefreshCw size={14} className={aiLoading ? 'animate-spin text-emerald-400' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {/* AI Content Display */}
+          <div className="mt-6 space-y-5">
+            {aiLoading ? (
+              <div className="py-8 text-center text-sm text-zinc-400 flex items-center justify-center gap-2">
+                <RefreshCw size={18} className="animate-spin text-emerald-400" />
+                <span>Analyzing your {aiPeriod === 'day' ? 'daily' : 'weekly'} M-Pesa transactions...</span>
+              </div>
+            ) : aiData?.aiAnalysis ? (
+              <>
+                {/* Headline Banner */}
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200 text-sm font-bold flex items-start gap-3">
+                  <Zap size={20} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-xs uppercase tracking-wider text-emerald-400 font-semibold block mb-0.5">
+                      {aiPeriod === 'day' ? 'Daily Key Takeaway' : 'Weekly Key Takeaway'}
+                    </span>
+                    {aiData.aiAnalysis.headline}
+                  </div>
+                </div>
+
+                {/* Highlights List */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {aiData.aiAnalysis.highlights?.map((highlight: string, idx: number) => (
+                    <div key={idx} className="rounded-xl border border-white/10 bg-zinc-950/70 p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                        <CheckCircle2 size={14} />
+                        <span>Insight #{idx + 1}</span>
+                      </div>
+                      <p className="text-xs text-zinc-200 leading-relaxed">{highlight}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Breakdown Summary */}
+                {aiData.aiAnalysis.breakdownSummary && (
+                  <div className="rounded-xl border border-white/5 bg-zinc-950/50 p-4 text-xs text-zinc-400 leading-relaxed">
+                    <strong className="text-zinc-200 font-semibold">Executive Summary: </strong>
+                    {aiData.aiAnalysis.breakdownSummary}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-zinc-500 text-center py-4">Unable to load AI analysis. Try refreshing.</p>
+            )}
           </div>
         </div>
 
